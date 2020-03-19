@@ -38,14 +38,19 @@ power = np.array(pg.power)
 pg_smooth = np.array(pg_smooth)
 nu = np.array(pg.frequency)
 
-omega = np.linspace(10,400,5000)
-#ask about this
-omega = 1e-6*2*np.pi*omega
+#omega = np.linspace(10,400,5000)
+##ask about this
+#omega = 1e-6*2*np.pi*omega
 
+omega = nu
 
 y = np.ascontiguousarray(flux, dtype=np.float64)
 norm = np.median(y)
 y = (y / norm - 1) * 1e3
+#y = np.ones_like(y)*1e-4
+plt.figure()
+plt.plot(time,y)
+plt.show()
 #yerr = np.ascontiguousarray(lc_err, dtype=np.float64)
 yerr = np.ascontiguousarray(lc_err, dtype=np.float64) * 1e3 / norm
 t = np.ascontiguousarray(time, dtype=np.float64)
@@ -61,11 +66,11 @@ def run_gp_single(Sg,wg,S1,w1,Q1,opt = opt):
 
 
         mean = pm.Normal("mean", mu=np.mean(y), sigma=1.0)
-        logSg = pm.Normal("logSg", mu=0.0, sigma=15.0, testval=Sg)
-        logwg = pm.Normal("logwg", mu = 0.0, sigma = 15.0, testval=wg-np.log(1e6))
-        logS1 = pm.Normal("logS1", mu=0.0, sigma=15.0, testval=S1)
-        logw1 = pm.Normal("logw1", mu = 0.0, sigma = 15.0, testval=w1-np.log(1e6))
-        logQ1 = pm.Normal("logQ1", mu=0.0, sigma=15.0, testval=Q1)
+        logSg = pm.Normal("logSg", mu=0.0, sigma=300.0, testval=Sg)
+        logwg = pm.Normal("logwg", mu = 0.0, sigma = 300.0, testval=wg)
+        logS1 = pm.Normal("logS1", mu=0.0, sigma=300.0, testval=S1)
+        logw1 = pm.Normal("logw1", mu =0.0, sigma = 300.0, testval=w1)
+        logQ1 = pm.Normal("logQ1", mu=0.0, sigma=300.0, testval=Q1)
 
 
         # Set up the kernel an GP
@@ -80,6 +85,8 @@ def run_gp_single(Sg,wg,S1,w1,Q1,opt = opt):
         # Condition the GP on the observations and add the marginal likelihood
         # to the model
         gp.marginal("gp", observed=y)
+        
+        
     with model:
         val = gp.kernel.psd(omega)
 
@@ -102,8 +109,9 @@ def run_gp_single(Sg,wg,S1,w1,Q1,opt = opt):
         if (opt == 1):
             map_soln = xo.optimize(start=map_soln, vars=[logSg])
         #ask about this, do i need to scale when I show this?
-            map_soln = xo.optimize(start=map_soln, vars=[logs2])
-            map_soln = xo.optimize(start=map_soln, vars=[logS1,logw1])
+            map_soln = xo.optimize(start=map_soln, vars=[logwg])
+            #map_soln = xo.optimize(start=map_soln, vars=[logS1,logw1])
+            #map_soln = xo.optimize(start=map_soln)
 
 
 
@@ -171,9 +179,9 @@ def run_gp_binary(Sg,wg,S1,w1,Q1,S2,w2,Q2,opt=opt):
             print('running opt')
             map_soln = xo.optimize(start=map_soln, vars=[logSg])
         #ask about this, do i need to scale when I show this?
-            map_soln = xo.optimize(start=map_soln, vars=[logs2])
-            map_soln = xo.optimize(start=map_soln, vars=[logS1,logw1])
-            map_soln = xo.optimize(start=map_soln, vars=[logS2,logw2])
+            map_soln = xo.optimize(start=map_soln, vars=[logwg])
+            #map_soln = xo.optimize(start=map_soln, vars=[logS1,logw1])
+            #map_soln = xo.optimize(start=map_soln, vars=[logS2,logw2])
 
 
         psd_final = xo.eval_in_model(gp.kernel.psd(omega),map_soln)
@@ -191,10 +199,10 @@ def run_gp_binary(Sg,wg,S1,w1,Q1,S2,w2,Q2,opt=opt):
 
 
 
-Sg0 = -8.9
-wg0 = 7.3
-S10 = -10.9
-w10 = 7.3
+Sg0 = -15.6
+wg0 = 6.
+S10 = -13
+w10 = 6.5
 Q10 = 1.2
 S20 = 0.0
 w20 = 0.0
@@ -205,7 +213,11 @@ delta_vals = 0.1
 
 
 psd_init, star_1_psd_init, bg_psd_init , psd_final, star_psd_fin, bg_psd_fin, map_soln = run_gp_single(Sg0, wg0, S10,w10, Q10)
-omega2pi = omega/(2*np.pi)
+
+
+
+omega2pi = omega
+#omega2pi = omega/(2*np.pi)
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.35)
@@ -216,7 +228,14 @@ star_1_psd_init_line, = ax.plot(omega2pi, star_1_psd_init, label = 'Star')
 bg_psd_init_line, = ax.plot(omega2pi, bg_psd_init, label = 'BG')
 #plt.plot(omega,psd_final, label = 'PSD following optimization')
 #ask about this change, otherwise not on the same scale
-true_data_line, = ax.plot(1e-6*nu, power*1e6, alpha = 0.5)
+
+
+
+true_data_line, = ax.plot(nu, power, alpha = 0.5)
+#true_data_line, = ax.plot(1e-6*nu, power*1e6, alpha = 0.5)
+
+
+
 ax.legend(loc = 'best')
 ax.set_xscale('log')
 
@@ -240,11 +259,11 @@ axw2 = plt.axes([1.5, 0.1, 0.4, 0.03], facecolor=axcolor)
 axQ2 = plt.axes([1.5, 0.05, 0.4, 0.03], facecolor=axcolor)
 
 
-sSg = Slider(axSg, 'Sg', -15, 15, valinit=Sg0, valstep=delta_vals)
-swg = Slider(axWg, 'Wg', -15, 15, valinit=wg0, valstep=delta_vals)
-sS1 = Slider(axS1, 'S1', -15, 15, valinit=S10, valstep=delta_vals)
-sw1 = Slider(axw1, 'w1', -15, 15, valinit=w10, valstep=delta_vals)
-sQ1 = Slider(axQ1, 'Q1', -15, 15, valinit=Q10, valstep=delta_vals)
+sSg = Slider(axSg, 'Sg', -30, 30, valinit=Sg0, valstep=delta_vals)
+swg = Slider(axWg, 'Wg', -30, 30, valinit=wg0, valstep=delta_vals)
+sS1 = Slider(axS1, 'S1', -30, 30, valinit=S10, valstep=delta_vals)
+sw1 = Slider(axw1, 'w1', -30, 30, valinit=w10, valstep=delta_vals)
+sQ1 = Slider(axQ1, 'Q1', -30, 15, valinit=Q10, valstep=delta_vals)
 sS2 = Slider(axS2, 'S2', -15, 15, valinit=S20, valstep=delta_vals)
 sw2 = Slider(axw2, 'w2', -15, 15, valinit=w20, valstep=delta_vals)
 sQ2 = Slider(axQ2, 'Q2', -15, 15, valinit=Q20, valstep=delta_vals)
@@ -307,10 +326,10 @@ def binary(label):
     if (label == 'Binary'):
 
         bin = 1
-        Sg0 = -8.9
-        wg0 = 7.3
-        S10 = -10.9
-        w10 = 7.3
+        Sg0 = -15.9
+        wg0 = 6.
+        S10 = -13.9
+        w10 = 6.5
         Q10 = 1.2
         S20 = -9.9
         w20 = 6.3
@@ -332,7 +351,7 @@ def binary(label):
         bg_psd_init_line, = ax.plot(omega2pi, bg_psd_init, label = 'BG')
         #plt.plot(omega,psd_final, label = 'PSD following optimization')
         #ask about this change, otherwise not on the same scale
-        true_data_line, = ax.plot(1e-6*nu, power*1e6, alpha = 0.5)
+        true_data_line, = ax.plot(nu, power, alpha = 0.5)
         ax.legend(loc = 'best')
         ax.set_xscale('log')
 
@@ -353,10 +372,10 @@ def binary(label):
         axw2 = plt.axes([0.55, 0.1, 0.35, 0.03], facecolor=axcolor)
         axQ2 = plt.axes([0.55, 0.05, 0.35, 0.03], facecolor=axcolor)
 
-        sSg = Slider(axSg, 'Sg', -15, 15, valinit=Sg0, valstep=delta_vals)
-        swg = Slider(axWg, 'Wg', -15, 15, valinit=wg0, valstep=delta_vals)
-        sS1 = Slider(axS1, 'S1', -15, 15, valinit=S10, valstep=delta_vals)
-        sw1 = Slider(axw1, 'w1', -15, 15, valinit=w10, valstep=delta_vals)
+        sSg = Slider(axSg, 'Sg', -30, 30, valinit=Sg0, valstep=delta_vals)
+        swg = Slider(axWg, 'Wg', -30, 30, valinit=wg0, valstep=delta_vals)
+        sS1 = Slider(axS1, 'S1', -30, 30, valinit=S10, valstep=delta_vals)
+        sw1 = Slider(axw1, 'w1', -30, 30, valinit=w10, valstep=delta_vals)
         sQ1 = Slider(axQ1, 'Q1', -15, 15, valinit=Q10, valstep=delta_vals)
 
         sS2 = Slider(axS2, 'S2', -15, 15, valinit=S20, valstep=delta_vals)
@@ -416,7 +435,7 @@ def optimize(event):
     bg_psd_init_line, = ax[0].plot(omega2pi, bg_psd_init, label = 'BG')
     #plt.plot(omega,psd_final, label = 'PSD following optimization')
     #ask about this change, otherwise not on the same scale
-    true_data_line, = ax[0].plot(1e-6*nu, power*1e6, alpha = 0.5)
+    true_data_line, = ax[0].plot(nu, power, alpha = 0.5)
     ax[0].legend(loc = 'best')
     ax[0].set_xscale('log')
     ax[0].set_xticklabels([])
@@ -438,7 +457,7 @@ def optimize(event):
     bg_psd_fin_line, = ax[1].plot(omega2pi, bg_psd_fin,  label = 'BG')
     #ax[1].plot(omega2pi, np.exp(logs2)*np.ones_like(omega))
     #plt.plot(omega,psd_final, label = 'PSD following optimization')
-    true_data_line2, = ax[1].plot(1e-6*nu,power*1e6, alpha = 0.5)
+    true_data_line2, = ax[1].plot(nu,power*1e6, alpha = 0.5)
     ax[1].legend(loc = 'best')
     ax[1].set_xscale('log')
     ax[1].set_yscale('log')
