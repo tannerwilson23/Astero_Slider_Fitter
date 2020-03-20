@@ -46,31 +46,34 @@ omega = nu
 
 y = np.ascontiguousarray(flux, dtype=np.float64)
 norm = np.median(y)
-y = (y / norm - 1) * 1e3
+y = (y / norm - 1)
 #y = np.ones_like(y)*1e-4
 plt.figure()
 plt.plot(time,y)
 plt.show()
 #yerr = np.ascontiguousarray(lc_err, dtype=np.float64)
-yerr = np.ascontiguousarray(lc_err, dtype=np.float64) * 1e3 / norm
+yerr = np.ascontiguousarray(lc_err, dtype=np.float64)/ norm
 t = np.ascontiguousarray(time, dtype=np.float64)
 
 opt = 0
 bin = 0
 
 
-def run_gp_single(Sg,wg,S1,w1,Q1,opt = opt):
+def run_gp_single(Sgv,wgv,S1v,w1v,Q1v,opt = opt):
+    
+    if (opt == 1):
+        print('Running Gp Single Optimiziation', 'Sgv',Sgv, 'wgv',wgv, 'S1v',S1v, 'w1v',w1v, 'Q1v', Q1v)
     with pm.Model() as model:
 
-        logs2 = pm.Normal("logs2", mu=2 * np.log(np.mean(yerr)), sigma=100.0, testval = -100)
+        logs2 = pm.Normal("logs2", mu=2 * np.log(np.mean(yerr)), sigma=100.0, testval = 100)
 
 
         mean = pm.Normal("mean", mu=np.mean(y), sigma=1.0)
-        logSg = pm.Normal("logSg", mu=0.0, sigma=300.0, testval=Sg)
-        logwg = pm.Normal("logwg", mu = 0.0, sigma = 300.0, testval=wg)
-        logS1 = pm.Normal("logS1", mu=0.0, sigma=300.0, testval=S1)
-        logw1 = pm.Normal("logw1", mu =0.0, sigma = 300.0, testval=w1)
-        logQ1 = pm.Normal("logQ1", mu=0.0, sigma=300.0, testval=Q1)
+        logSg = pm.Normal("logSg", mu=Sgv, sigma= 100.0, testval=Sgv)
+        logwg = pm.Normal("logwg", mu = wgv, sigma = 100.0, testval=wgv)
+        logS1 = pm.Normal("logS1", mu=S1v, sigma=100.0, testval=S1v)
+        logw1 = pm.Normal("logw1", mu =w1v, sigma = 100.0, testval=w1v)
+        logQ1 = pm.Normal("logQ1", mu=Q1v, sigma=100.0, testval=Q1v)
 
 
         # Set up the kernel an GP
@@ -110,8 +113,11 @@ def run_gp_single(Sg,wg,S1,w1,Q1,opt = opt):
             map_soln = xo.optimize(start=map_soln, vars=[logSg])
         #ask about this, do i need to scale when I show this?
             map_soln = xo.optimize(start=map_soln, vars=[logwg])
-            #map_soln = xo.optimize(start=map_soln, vars=[logS1,logw1])
-            #map_soln = xo.optimize(start=map_soln)
+            map_soln = xo.optimize(start=map_soln, vars=[logw1])
+            map_soln = xo.optimize(start=map_soln, vars=[logS1])
+            map_soln = xo.optimize(start=map_soln)
+            
+            print(map_soln.values())
 
 
 
@@ -184,6 +190,7 @@ def run_gp_binary(Sg,wg,S1,w1,Q1,S2,w2,Q2,opt=opt):
             #map_soln = xo.optimize(start=map_soln, vars=[logS2,logw2])
 
 
+
         psd_final = xo.eval_in_model(gp.kernel.psd(omega),map_soln)
 
 
@@ -199,10 +206,10 @@ def run_gp_binary(Sg,wg,S1,w1,Q1,S2,w2,Q2,opt=opt):
 
 
 
-Sg0 = -15.6
-wg0 = 6.
-S10 = -13
-w10 = 6.5
+Sg0 = -23.6
+wg0 = 5.6
+S10 = -24.3
+w10 = 5.5
 Q10 = 1.2
 S20 = 0.0
 w20 = 0.0
@@ -263,7 +270,7 @@ sSg = Slider(axSg, 'Sg', -30, 30, valinit=Sg0, valstep=delta_vals)
 swg = Slider(axWg, 'Wg', -30, 30, valinit=wg0, valstep=delta_vals)
 sS1 = Slider(axS1, 'S1', -30, 30, valinit=S10, valstep=delta_vals)
 sw1 = Slider(axw1, 'w1', -30, 30, valinit=w10, valstep=delta_vals)
-sQ1 = Slider(axQ1, 'Q1', -30, 15, valinit=Q10, valstep=delta_vals)
+sQ1 = Slider(axQ1, 'Q1', -30, 30, valinit=Q10, valstep=delta_vals)
 sS2 = Slider(axS2, 'S2', -15, 15, valinit=S20, valstep=delta_vals)
 sw2 = Slider(axw2, 'w2', -15, 15, valinit=w20, valstep=delta_vals)
 sQ2 = Slider(axQ2, 'Q2', -15, 15, valinit=Q20, valstep=delta_vals)
@@ -376,7 +383,7 @@ def binary(label):
         swg = Slider(axWg, 'Wg', -30, 30, valinit=wg0, valstep=delta_vals)
         sS1 = Slider(axS1, 'S1', -30, 30, valinit=S10, valstep=delta_vals)
         sw1 = Slider(axw1, 'w1', -30, 30, valinit=w10, valstep=delta_vals)
-        sQ1 = Slider(axQ1, 'Q1', -15, 15, valinit=Q10, valstep=delta_vals)
+        sQ1 = Slider(axQ1, 'Q1', -30, 30, valinit=Q10, valstep=delta_vals)
 
         sS2 = Slider(axS2, 'S2', -15, 15, valinit=S20, valstep=delta_vals)
         sw2 = Slider(axw2, 'w2', -15, 15, valinit=w20, valstep=delta_vals)
@@ -409,11 +416,11 @@ def optimize(event):
     opt = 1
 
     Sg = sSg.val
-    print(Sg)
     wg = swg.val
     S1 = sS1.val
     w1 = sw1.val
     Q1 = sQ1.val
+    print(Sg, wg, S1, w1, Q1)
     if (bin == 0):
         psd_init, star_1_psd_init, bg_psd_init , psd_final, star_1_psd_fin, bg_psd_fin, map_soln = run_gp_single(Sg, wg, S1,w1, Q1, opt)
     else:
@@ -450,6 +457,7 @@ def optimize(event):
 
     psd_final_line, = ax[1].plot(omega2pi, psd_final, label = 'Total')
     star_1_psd_fin_line, = ax[1].plot(omega2pi, star_1_psd_fin, label = 'Star 1')
+    
     if (bin == 1):
         star_2_psd_fin_line, = ax[1].plot(omega2pi, star_2_psd_fin, label = 'Star 2')
 
@@ -457,7 +465,7 @@ def optimize(event):
     bg_psd_fin_line, = ax[1].plot(omega2pi, bg_psd_fin,  label = 'BG')
     #ax[1].plot(omega2pi, np.exp(logs2)*np.ones_like(omega))
     #plt.plot(omega,psd_final, label = 'PSD following optimization')
-    true_data_line2, = ax[1].plot(nu,power*1e6, alpha = 0.5)
+    true_data_line2, = ax[1].plot(nu,power, alpha = 0.5)
     ax[1].legend(loc = 'best')
     ax[1].set_xscale('log')
     ax[1].set_yscale('log')
