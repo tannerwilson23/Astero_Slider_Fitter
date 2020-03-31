@@ -68,7 +68,6 @@ def run_gp_single(Sgv,wgv,S1v,w1v,Q1v,opt = opt):
         logs2 = pm.Normal("logs2", mu=2 * np.log(np.mean(yerr)), sigma=100.0, testval = 100)
 
 
-        mean = pm.Normal("mean", mu=np.mean(y), sigma=1.0)
         logSg = pm.Normal("logSg", mu=Sgv, sigma= 100.0, testval=Sgv)
         logwg = pm.Normal("logwg", mu = wgv, sigma = 100.0, testval=wgv)
         logS1 = pm.Normal("logS1", mu=S1v, sigma=100.0, testval=S1v)
@@ -81,9 +80,9 @@ def run_gp_single(Sgv,wgv,S1v,w1v,Q1v,opt = opt):
         star_kernel1 = terms.SHOTerm(log_S0=logS1, log_w0=logw1, log_Q=logQ1)
         kernel = star_kernel1 + bg_kernel
 
-        gp = GP(kernel, t, yerr ** 2 + pm.math.exp(logs2), mean = mean)
-        gp_star1 = GP(star_kernel1, t, yerr ** 2 + pm.math.exp(logs2), mean = mean)
-        gp_bg = GP(bg_kernel, t, yerr ** 2 + pm.math.exp(logs2), mean = mean)
+        gp = GP(kernel, t, yerr ** 2 + pm.math.exp(logs2))
+        gp_star1 = GP(star_kernel1, t, yerr ** 2 + pm.math.exp(logs2))
+        gp_bg = GP(bg_kernel, t, yerr ** 2 + pm.math.exp(logs2))
 
         # Condition the GP on the observations and add the marginal likelihood
         # to the model
@@ -118,6 +117,22 @@ def run_gp_single(Sgv,wgv,S1v,w1v,Q1v,opt = opt):
             map_soln = xo.optimize(start=map_soln)
             
             print(map_soln.values())
+            mu, var = xo.eval_in_model(
+                gp.predict(t, return_var=True), map_soln
+            )
+            
+            plt.figure()
+            plt.errorbar(t, y, yerr=yerr, fmt=".k", capsize=0, label="data")
+            sd = np.sqrt(var)
+            art = plt.fill_between(t, mu + sd, mu - sd, color="C1", alpha=0.3)
+            art.set_edgecolor("none")
+            plt.plot(t, mu, color="C1", label="prediction")
+
+            plt.legend(fontsize=12)
+            plt.xlabel("t")
+            plt.ylabel("y")
+            plt.xlim(0, 10)
+            _ = plt.ylim(-2.5, 2.5)
 
 
 
